@@ -44,16 +44,16 @@ markup = ReplyKeyboardMarkup(reply_keyboard, one_time_keyboard=True)
 
 
 def facts_to_str(user_data: Dict[str, str]) -> str:
-    """Helper function for formatting the gathered user info."""
+    """Formata as escolhas em formato de lista."""
     facts = [f"{key} - {value}" for key, value in user_data.items()]
     return "\n".join(facts).join(["\n", "\n"])
 
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-    """Start the conversation and ask user for input."""
+    """Começa a conversa e mostra o menu"""
     await update.message.reply_text(
-        "Hi! My name is Doctor Botter. I will hold a more complex conversation with you. "
-        "Why don't you tell me something about yourself?",
+        f"Olá {update.message.from_user.first_name}!\n"
+        "Sou o Flowih bot, ficarei reponsável pela sua configuração de filtros!",
         reply_markup=markup,
     )
 
@@ -61,25 +61,16 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
 
 
 async def regular_choice(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-    """Ask the user for info about the selected predefined choice."""
+    """Pede o input do usuario sobre o topico escolhido"""
     text = update.message.text
     context.user_data["choice"] = text
-    await update.message.reply_text(f"Your {text.lower()}? Yes, I would love to hear about that!")
+    await update.message.reply_text(f"Por favor, digite a sua preferêmcia para {text.lower()}: ")
 
     return TYPING_REPLY
 
 
-async def custom_choice(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-    """Ask the user for a description of a custom category."""
-    await update.message.reply_text(
-        'Alright, please send me the category first, for example "Most impressive skill"'
-    )
-
-    return TYPING_CHOICE
-
-
 async def received_information(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-    """Store info provided by user and ask for the next category."""
+    """Guarda a info e pergunta a proxima"""
     user_data = context.user_data
     text = update.message.text
     category = user_data["choice"]
@@ -95,8 +86,8 @@ async def received_information(update: Update, context: ContextTypes.DEFAULT_TYP
     return CHOOSING
 
 
-async def Pronto(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-    """Display the gathered info and end the conversation."""
+async def done(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    """Mostra os filtros escolhidos."""
     
     user_data = context.user_data
     if "choice" in user_data:
@@ -138,7 +129,7 @@ def main() -> None:
                 )
             ],
         },
-        fallbacks=[MessageHandler(filters.Regex("^Pronto$"), Pronto)],
+        fallbacks=[MessageHandler(filters.Regex("^Pronto$"), done)],
     )
 
     application.add_handler(conv_handler)
