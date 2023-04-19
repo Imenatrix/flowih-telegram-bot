@@ -1,13 +1,12 @@
+import logging
+import bot
 
-from factories.app_factory import AppFactory
-
+logging.basicConfig(format="%(asctime)s - %(name)s - %(levelname)s - %(message)s", level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 def main() -> None:
     """Roda o bot"""
-    app = AppFactory()
-    app.run()    
-
-
+    bot.init()  
 
 
 if __name__ == "__main__":
