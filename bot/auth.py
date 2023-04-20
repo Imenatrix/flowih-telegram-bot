@@ -2,6 +2,7 @@ import firebase_admin
 from firebase_admin import auth
 import bcrypt
 
+
 class Auth():
     def _hash_password(self, password):
         # Gera um hash de senha usando o Bcrypt
@@ -9,7 +10,7 @@ class Auth():
         hashed_password = bcrypt.hashpw(password.encode('utf-8'), salt)
 
         return hashed_password
-    
+
     def _verify_password(password, hashed_password):
         # Verifica se a senha corresponde ao hash de senha usando o Bcrypt
         return bcrypt.checkpw(password.encode('utf-8'), hashed_password)
@@ -26,8 +27,8 @@ class Auth():
         except auth.AuthError as e:
             # Retorna uma mensagem de erro, caso ocorra um erro na criação do usuário
             return f"Erro ao criar usuário no Firebase Auth - " + e
-        
-    def authenticate_user(self,email, password) -> auth:
+
+    def authenticate_user(self, email, password) -> auth:
         try:
             # Autentica o usuário com o Firebase Auth
             if self._verify_password(password, self._hash_password(password)):
