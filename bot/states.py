@@ -1,8 +1,9 @@
 
-from bot import CHOOSING, markup
-from bot.utils import _done_fallback, _regular_choice, _regular_reply
-from utils import set_timer
-from utils import show_error
+from conf import (
+    CHOOSING,
+    markup
+)
+from bot.utils import done_fallback, regular_choice, regular_reply, set_timer, show_error
 from telegram import Update
 from telegram.ext import (
     ContextTypes,
@@ -10,6 +11,7 @@ from telegram.ext import (
     ConversationHandler,
     filters,
 )
+
 
 async def entrypoint(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     """
@@ -22,42 +24,48 @@ async def entrypoint(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
             reply_markup=markup,
         )
     except Exception as e:
-        show_error(update,context)
+        show_error(update, context)
         return ConversationHandler.END
 
     return CHOOSING
 
 
-async def choosing_state():
+def choosing_state():
     return [
         MessageHandler(
-            filters.Regex("^(Modelo|Direção|Quilometragem|Tipo de Câmbio|Tipo de Combustível|Ano)$"), _regular_choice,
+            filters.Regex(
+                "^(Modelo|Direção|Quilometragem|Tipo de Câmbio|Tipo de Combustível|Ano)$"), regular_choice,
         ),
     ]
-    
-async def typing_choice_state():
-    return  [
+
+
+def typing_choice_state():
+    return [
         MessageHandler(
-            filters.TEXT & ~(filters.COMMAND | filters.Regex("^Pronto$")), _regular_choice
+            filters.TEXT & ~(filters.COMMAND | filters.Regex(
+                "^Pronto$")), regular_choice
         )
     ]
 
-async def typing_reply_state():
-    return  [
+
+def typing_reply_state():
+    return [
         MessageHandler(
             filters.TEXT & ~(filters.COMMAND | filters.Regex("^Pronto$")),
-            _regular_reply,
+            regular_reply,
         )
     ]
-    
-async def timer_state():
+
+
+def timer_state():
     return [
         MessageHandler(filters.TEXT & ~filters.COMMAND, set_timer)
     ]
-    
-async def fallback_state():
+
+
+def fallback_state():
     return [
         MessageHandler(
-            filters.Regex("^(Modelo|Direção|Quilometragem|Tipo de Câmbio|Tipo de Combustível|Ano)$"), _done_fallback,
+            filters.Regex("^Pronto$"), done_fallback,
         ),
     ]

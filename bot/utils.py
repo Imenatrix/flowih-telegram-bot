@@ -1,19 +1,20 @@
 
 
-import time
 import logging
+import time
 from typing import Dict
-from telegram import ReplyKeyboardRemove,Update
-from bot import (
-    TYPING_REPLY, 
-    CHOOSING, 
-    TIMER,  
-    REPLY_DEFAULT, 
+import threading
+from telegram import ReplyKeyboardRemove, Update
+from conf import (
+    TYPING_REPLY,
+    CHOOSING,
+    TIMER,
+    REPLY_DEFAULT,
     url_filters,
-    markup, 
-    interval_markup,  
-    strwheel_markup, 
-    gear_markup, 
+    markup,
+    interval_markup,
+    strwheel_markup,
+    gear_markup,
     gas_markup
 )
 from telegram.ext import (
@@ -21,23 +22,28 @@ from telegram.ext import (
     ConversationHandler,
 )
 
+CAN_LOOP = False
+STOP_TIMER = False
 
-async def _regular_choice(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+
+async def regular_choice(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     """
         Pede o input do usuario sobre o topico escolhido
     """
+    logging.info("regular choice")
+
     try:
         text = update.message.text
         context.user_data["choice"] = text
-        reply=REPLY_DEFAULT +  f" para {text.lower()}: "
+        reply = REPLY_DEFAULT + f" para {text.lower()}: "
         await validate_choices(reply, text, update, context)
     except Exception as e:
-        show_error(update,context)
+        show_error(update, context)
         return ConversationHandler.END
     return TYPING_REPLY
 
 
-async def _regular_reply(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+async def regular_reply(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     """
         Guarda a info e pergunta a proxima
     """
@@ -60,15 +66,18 @@ def _facts_to_str(user_data: Dict[str, str]) -> str:
     """
         Formata as escolhas em formato de lista.
     """
-    url_filters = {  key.lower().replace(" ", "_"):value for key, value in user_data.items()}
+    url_filters = {key.lower().replace(" ", "_"): value for key,
+                   value in user_data.items()}
     print(url_filters)
     facts = [f"{key} - {value}" for key, value in user_data.items()]
     return "\n".join(facts).join(["\n", "\n"])
 
-async def _done_fallback(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+
+async def done_fallback(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     """
         Mostra os filtros escolhidos.
     """
+    logging.info("done_fallback")
 
     user_data = context.user_data
     if "choice" in user_data:
@@ -84,84 +93,111 @@ async def _done_fallback(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
     )
     return TIMER
 
-async def _show_help(self,update: Update) -> None:
-    await update.effective_message.reply_text(
-        "Comandos aceitos:\n"+
-        "- /start: Começa o fluxo\n" +
-        "- /help: Mostra comandos\n"
-    )
-       
 
-async def _alarm(interval, context: ContextTypes.DEFAULT_TYPE) -> None:
+async def show_help(self, update: Update) -> None:
+    await update.effective_message.reply_text(
+        "Comandos aceitos:\n" +
+        "- /start: Começa o fluxo\n" +
+        "- /help: Mostra comandos\n" +
+        "- /unset: Remove intervalo configurado\n"
+    )
+
+
+async def alarm(interval, update: Update) -> None:
     """ 
         Manda a notificação.
     """
-    job = context.job
-    await context.bot.send_message(job.chat_id, text=f"Beep! {interval} seconds are over!")
-    
-    
-def _convert_to_seconds(update: Update,interval:int=60,) -> int:
+    logging.info("NO ALARM")
+    await update.effective_message.reply_text(f"{interval} segundos passaram! Aeee!")
+
+
+def _convert_to_seconds(update: Update, interval: int = 60,) -> int:
     logging.info("NO CONVERT TO seconds")
     if "hora" in update.message.text:
-        return  float(str(update.message.text).split(" ")[0]) * 60 * 60
+        return float(str(update.message.text).split(" ")[0]) * 60 * 60
     if "minuto" in update.message.text:
         return float(str(update.message.text).split(" ")[0]) * 60
 
 
-
-async def validate_choices(reply:str, text:str,update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+async def validate_choices(reply: str, text: str, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """
         Valida qual dos textos exibir, mostrando escolhas 
         pré-definas, ou liberando a escrita
     """
-    if text.lower() == "ano" or text.lower() == "quilometragem" :
+    if text.lower() == "ano" or text.lower() == "quilometragem":
         new_reply = REPLY_DEFAULT + f" para {text.lower()} (números apenas): "
         try:
             await update.message.reply_text(new_reply)
         except Exception as e:
-            show_error(update,context)
+            show_error(update, context)
             return ConversationHandler.END
     elif text.lower() == "direção":
         try:
-            await update.message.reply_text(reply,reply_markup=strwheel_markup)
+            await update.message.reply_text(reply, reply_markup=strwheel_markup)
         except Exception as e:
-            show_error(update,context)
+            show_error(update, context)
             return ConversationHandler.END
     elif "combustível" in text.lower():
         try:
-            await update.message.reply_text(reply,reply_markup=gas_markup)
+            await update.message.reply_text(reply, reply_markup=gas_markup)
         except Exception as e:
-            show_error(update,context)
+            show_error(update, context)
             return ConversationHandler.END
     elif "câmbio" in text.lower():
         try:
-            await update.message.reply_text(reply,reply_markup=gear_markup)
+            await update.message.reply_text(reply, reply_markup=gear_markup)
         except Exception as e:
-            show_error(update,context)
+            show_error(update, context)
             return ConversationHandler.END
     else:
         try:
-            await update.message.reply_text(reply)    
+            await update.message.reply_text(reply)
         except Exception as e:
-            show_error(update,context)
+            show_error(update, context)
             return ConversationHandler.END
-        
-async def set_timer(update:Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+
+
+async def set_timer(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """
         Cria o loop das notificações
     """
-    interval = _convert_to_seconds()
-        
+    interval = _convert_to_seconds(update)
+    logging.info(f"INTERVAL {interval}")
+    T = threading.Timer(
+        int(interval), logging.info, f"{interval} segundos passaram! Aeee!")
     try:
         if interval < 0:
             await update.effective_message.reply_text("Intervalo inválido!")
-        while True:
-            logging.info(f"{update}, {interval}")
-            time.sleep(interval) # delay em segundos
-            _alarm(context, interval)
-    except Exception:
+        await update.effective_message.reply_text(
+            f"Beleza! Intervalo de {interval} segundos configurado!")
+        while not STOP_TIMER:
+            elapsed_time = time.perf_counter() - start_time
+            logging.info(f"{time.perf_counter() - start_time}")
+            if elapsed_time >= interval:
+                await alarm(interval, update)
+                start_time = time.perf_counter()
+            STOP_TIMER = check_unset_timer()  # verificar a variável de controle
+        while CAN_LOOP:
+
+            T.start()  # delay em segundos
+            await alarm(interval, update)
+    except Exception as e:
+        logging.info(e)
         await update.effective_message.reply_text("Ops! houve um erro, tente novamente!")
         return ConversationHandler.END
+
+
+async def check_unset_timer(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    if "unset" in update.text.message:
+        await update.effective_message.reply_text("Beleza! Intervalo removido!")
+        return True
+
+
+async def unset_timer(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    if "unset" in update.text.message:
+        await update.effective_message.reply_text("Beleza! Intervalo removido!")
+        STOP_TIMER = True
+
 
 async def show_error(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """
