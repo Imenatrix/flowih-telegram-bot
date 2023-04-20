@@ -22,9 +22,6 @@ from telegram.ext import (
     ConversationHandler,
 )
 
-CAN_LOOP = False
-STOP_TIMER = False
-
 
 async def regular_choice(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     """
@@ -163,40 +160,31 @@ async def set_timer(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """
     interval = _convert_to_seconds(update)
     logging.info(f"INTERVAL {interval}")
-    T = threading.Timer(
-        int(interval), logging.info, f"{interval} segundos passaram! Aeee!")
+    stop_timer = False
+    start_time = time.perf_counter()
     try:
         if interval < 0:
             await update.effective_message.reply_text("Intervalo inválido!")
         await update.effective_message.reply_text(
             f"Beleza! Intervalo de {interval} segundos configurado!")
-        while not STOP_TIMER:
+        while not stop_timer:
             elapsed_time = time.perf_counter() - start_time
-            logging.info(f"{time.perf_counter() - start_time}")
             if elapsed_time >= interval:
                 await alarm(interval, update)
                 start_time = time.perf_counter()
-            STOP_TIMER = check_unset_timer()  # verificar a variável de controle
-        while CAN_LOOP:
+                stop_timer = await unset_timer(update, context)
+            # verificar a variável de controle
 
-            T.start()  # delay em segundos
-            await alarm(interval, update)
     except Exception as e:
         logging.info(e)
         await update.effective_message.reply_text("Ops! houve um erro, tente novamente!")
         return ConversationHandler.END
 
 
-async def check_unset_timer(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    if "unset" in update.text.message:
+async def unset_timer(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    if "unset" in update.message.text:
         await update.effective_message.reply_text("Beleza! Intervalo removido!")
         return True
-
-
-async def unset_timer(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    if "unset" in update.text.message:
-        await update.effective_message.reply_text("Beleza! Intervalo removido!")
-        STOP_TIMER = True
 
 
 async def show_error(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
