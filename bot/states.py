@@ -1,9 +1,18 @@
-
-from conf import (
+import logging
+import time
+from multiprocessing import Process
+from settings import (
     CHOOSING,
-    markup
+    markup,
+    current_process
 )
-from bot.utils import done_fallback, regular_choice, regular_reply, set_timer, show_error
+from bot.utils import (
+    done_fallback,
+    regular_choice,
+    regular_reply,
+    set_client_interval,
+    show_error,
+    get_time)
 from telegram import Update
 from telegram.ext import (
     ContextTypes,
@@ -23,8 +32,11 @@ async def entrypoint(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
             "Sou o Flowih bot, ficarei reponsável pela sua configuração de filtros!",
             reply_markup=markup,
         )
+        start_time = time.perf_counter()
+        current_process = Process(target=get_time, args=(start_time, update))
+        current_process.start()
     except Exception as e:
-        show_error(update, context)
+        await show_error(update, context, e)
         return ConversationHandler.END
 
     return CHOOSING
@@ -59,7 +71,7 @@ def typing_reply_state():
 
 def timer_state():
     return [
-        MessageHandler(filters.TEXT & ~filters.COMMAND, set_timer)
+        MessageHandler(filters.TEXT & ~filters.COMMAND, set_client_interval)
     ]
 
 

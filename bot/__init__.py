@@ -1,5 +1,5 @@
-from bot.utils import show_help, unset_timer
-from conf import (
+from bot.utils import show_help, unset_client_interval, unset_process
+from settings import (
     config,
     CHOOSING,
     TYPING_CHOICE,
@@ -22,11 +22,11 @@ from telegram.ext import (
 
 
 def init():
-    print(config['TOKEN'])
     app = Application.builder().token(config['TOKEN']).build()
 
     app.add_handler(CommandHandler("help", show_help))
-    app.add_handler(CommandHandler("unset", unset_timer))
+    app.add_handler(CommandHandler("r", unset_process))
+    app.add_handler(CommandHandler("unset", unset_client_interval))
     app.add_handler(ConversationHandler(
         entry_points=[CommandHandler("start", entrypoint)],
         states={
@@ -37,5 +37,5 @@ def init():
         },
         fallbacks=fallback_state(),
     ))
-    # Run the bot until the user presses Ctrl-C
+    # Roda o bot até alguém interromper o script com Ctrt + C
     app.run_polling()
